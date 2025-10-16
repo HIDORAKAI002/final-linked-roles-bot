@@ -16,10 +16,13 @@ intents = discord.Intents.default()
 intents.members = True # REQUIRED to see member roles
 bot = discord.Client(intents=intents)
 
-# ------------------- Roles Mapping (Single Role) -------------------
-# This is set up for your one required role.
+# ------------------- Roles Mapping (Your 5 Roles) -------------------
 ROLE_MAPPING = [
-    {"key": "has_developer_role", "role_id": 1424397304273567827, "name": "Developer"},
+    {"key": "has_owner",     "role_id": 1373161181581410355, "name": "Owner"},
+    {"key": "has_staff",     "role_id": 1342367933535490090, "name": "Staff Team"},
+    {"key": "has_admin",     "role_id": 1426538681082318848, "name": "Admin"},
+    {"key": "has_moderator", "role_id": 1426538483035668523, "name": "Moderator"},
+    {"key": "has_developer", "role_id": 1424397304273567827, "name": "Developer"},
 ]
 
 # This creates the schema that Discord needs based on your mapping above
@@ -57,13 +60,12 @@ async def push_role_metadata(user_id: int, tokens: dict):
     member_roles = await get_member_roles(user_id)
     metadata = {}
     
-    required_role_id = ROLE_MAPPING[0]["role_id"]
-    metadata_key = ROLE_MAPPING[0]["key"]
-
-    if required_role_id in member_roles:
-        metadata[metadata_key] = 1 # True
-    else:
-        metadata[metadata_key] = 0 # False
+    # For each role we track, set its key to 1 if the user has the role, otherwise 0
+    for role in ROLE_MAPPING:
+        if role["role_id"] in member_roles:
+            metadata[role["key"]] = 1  # True
+        else:
+            metadata[role["key"]] = 0  # False
 
     print(f"✅ Pushing metadata for user {user_id}: {metadata}")
     await push_metadata(user_id, tokens, metadata)
