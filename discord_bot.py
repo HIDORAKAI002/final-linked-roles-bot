@@ -16,24 +16,25 @@ intents = discord.Intents.default()
 intents.members = True # REQUIRED to see member roles
 bot = discord.Client(intents=intents)
 
-# ------------------- Roles Mapping (Your 5 Roles) -------------------
+# ------------------- Roles Mapping (Bitfield System) -------------------
+# Each role is assigned a power of 2.
 ROLE_MAPPING = [
-    {"key": "has_owner",     "role_id": 1373161181581410355, "name": "Owner"},
-    {"key": "has_co_owner",  "role_id": 1426540955762430102, "name": "Co-owner"},
-    {"key": "has_admin",     "role_id": 1426538681082318848, "name": "Admin"},
-    {"key": "has_moderator", "role_id": 1426538483035668523, "name": "Moderator"},
-    {"key": "has_developer", "role_id": 1424397304273567827, "name": "Developer"},
+    {"flag": 1,  "role_id": 1373161181581410355}, # Owner (2^0)
+    {"flag": 2,  "role_id": 1426540955762430102}, # Co-owner (2^1)
+    {"flag": 4,  "role_id": 1424397304273567827}, # Developer (2^2)
+    {"flag": 8,  "role_id": 1426539083823452303}, # Manager (2^3)
+    {"flag": 16, "role_id": 1426538681082318848}, # Admin (2^4)
+    {"flag": 32, "role_id": 1426538483035668523}, # Moderator (2^5)
 ]
 
-# This creates the schema that Discord needs based on your mapping above
+# This creates the schema for our single integer metadata field
 ROLE_METADATA = [
     {
-        "key": role["key"],
-        "name": role["name"],
-        "description": f"Has the {role['name']} role in the server",
-        "type": 7  # 7 = boolean_equal
+        "key": "role_flags",
+        "name": "Role Flags",
+        "description": "A combined value representing all server roles",
+        "type": 1  # 1 = integer_equal
     }
-    for role in ROLE_MAPPING
 ]
 
 # --- Core Functions ---
@@ -58,14 +59,18 @@ async def push_metadata(user_id: int, tokens: dict, metadata: dict):
 
 async def push_role_metadata(user_id: int, tokens: dict):
     member_roles = await get_member_roles(user_id)
-    metadata = {}
     
-    # For each role we track, set its key to 1 if the user has the role, otherwise 0
-    for role in ROLE_MAPPING:
-        if role["role_id"] in member_roles:
-            metadata[role["key"]] = 1  # True
-        else:
-            metadata[role["key"]] = 0  # False
+    # Start with a flag value of 0
+    role_flags = 0
+    
+    # Use bitwise OR to add the flag for each role the user has
+    for mapping in ROLE_MAPPING:
+        if mapping["role_id"] in member_roles:
+            role_flags |= mapping["flag"]
+            
+    metadata = {
+        "role_flags": role_flags
+    }
 
     print(f"✅ Pushing metadata for user {user_id}: {metadata}")
     await push_metadata(user_id, tokens, metadata)
