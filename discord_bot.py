@@ -31,8 +31,8 @@ ROLE_MAPPING = [
 ROLE_METADATA = [
     {
         "key": "role_flags",
-        "name": "Role Flags",
-        "description": "A combined value representing all server roles",
+        "name": "Server Permissions", # Changed for clarity
+        "description": "Verify you have the required role in the server", # <-- THIS TEXT IS UPDATED
         "type": 1  # 1 = integer_equal
     }
 ]
