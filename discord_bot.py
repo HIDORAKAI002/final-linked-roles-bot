@@ -17,7 +17,6 @@ intents.members = True # REQUIRED to see member roles
 bot = discord.Client(intents=intents)
 
 # ------------------- Roles Mapping (Bitfield System) -------------------
-# Each role is assigned a power of 2.
 ROLE_MAPPING = [
     {"flag": 1,  "role_id": 1373161181581410355}, # Owner (2^0)
     {"flag": 2,  "role_id": 1426540955762430102}, # Co-owner (2^1)
@@ -31,8 +30,8 @@ ROLE_MAPPING = [
 ROLE_METADATA = [
     {
         "key": "role_flags",
-        "name": "Server Permissions", # Changed for clarity
-        "description": "Verify you have the required role in the server", # <-- THIS TEXT IS UPDATED
+        "name": "Server Permissions",
+        "description": "Verify you have the required role in the server",
         "type": 1  # 1 = integer_equal
     }
 ]
@@ -49,15 +48,21 @@ async def get_member_roles(user_id: int):
     return [role.id for role in member.roles]
 
 async def push_metadata(user_id: int, tokens: dict, metadata: dict):
+    """Pushes the metadata payload to Discord's API."""
     url = f"https://discord.com/api/v10/users/@me/applications/{CLIENT_ID}/role-connection"
     headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+    
+    # The API expects a JSON body with a "metadata" key
+    payload = {"metadata": metadata}
+    
     async with aiohttp.ClientSession() as session:
-        async with session.put(url, headers=headers, json={"metadata": metadata}) as resp:
+        async with session.put(url, headers=headers, json=payload) as resp:
             print(f"Metadata push for user {user_id} returned status: {resp.status}")
             if resp.status != 200:
                 print(f"Error pushing metadata: {await resp.text()}")
 
 async def push_role_metadata(user_id: int, tokens: dict):
+    """Checks user roles and pushes metadata ONLY if they have a mapped role."""
     member_roles = await get_member_roles(user_id)
     
     # Start with a flag value of 0
@@ -68,9 +73,16 @@ async def push_role_metadata(user_id: int, tokens: dict):
         if mapping["role_id"] in member_roles:
             role_flags |= mapping["flag"]
             
-    metadata = {
-        "role_flags": role_flags
-    }
-
-    print(f"✅ Pushing metadata for user {user_id}: {metadata}")
-    await push_metadata(user_id, tokens, metadata)
+    # --- THIS IS THE NEW LOGIC ---
+    if role_flags == 0:
+        # User has none of the required roles.
+        print(f"❌ User {user_id} has no mapped roles. Clearing any existing badge.")
+        # Pushing empty metadata removes the linked role from their profile.
+        await push_metadata(user_id, tokens, {})
+    else:
+        # User has at least one role. Grant the badge.
+        metadata = {
+            "role_flags": role_flags
+        }
+        print(f"✅ Pushing metadata for user {user_id}: {metadata}")
+        await push_metadata(user_id, tokens, metadata)
