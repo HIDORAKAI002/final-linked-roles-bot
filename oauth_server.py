@@ -63,4 +63,4 @@ def callback():
         return f"✅ Success! Your roles have been linked, {user['username']}. You can now close this tab."
     else:
         # The user had no valid roles
-        return f"❌ Stfu lil bro dont even try."
+        return f"❌ Verification Failed. Sybau lil bro dont even try. You can close this tab."
