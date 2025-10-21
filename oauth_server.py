@@ -53,6 +53,14 @@ def callback():
     user_id = int(user["id"])
 
     store_discord_tokens(user_id, tokens)
-    asyncio.run(push_role_metadata(user_id, tokens))
+    
+    # --- THIS IS THE UPDATED LOGIC ---
+    # Capture the return value from push_role_metadata
+    was_role_granted = asyncio.run(push_role_metadata(user_id, tokens))
 
-    return f"✅ Success! Your roles have been linked, {user['username']}. You can now close this tab."
+    if was_role_granted:
+        # The user had a role and the badge was successfully granted
+        return f"✅ Success! Your roles have been linked, {user['username']}. You can now close this tab."
+    else:
+        # The user had no valid roles
+        return f"❌ Stfu lil bro dont even try."

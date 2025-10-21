@@ -52,7 +52,6 @@ async def push_metadata(user_id: int, tokens: dict, metadata: dict):
     url = f"https://discord.com/api/v10/users/@me/applications/{CLIENT_ID}/role-connection"
     headers = {"Authorization": f"Bearer {tokens['access_token']}"}
     
-    # The API expects a JSON body with a "metadata" key
     payload = {"metadata": metadata}
     
     async with aiohttp.ClientSession() as session:
@@ -60,29 +59,30 @@ async def push_metadata(user_id: int, tokens: dict, metadata: dict):
             print(f"Metadata push for user {user_id} returned status: {resp.status}")
             if resp.status != 200:
                 print(f"Error pushing metadata: {await resp.text()}")
+                return False # Return False on API error
+            return True # Return True on success
 
 async def push_role_metadata(user_id: int, tokens: dict):
-    """Checks user roles and pushes metadata ONLY if they have a mapped role."""
+    """Checks user roles and pushes metadata. Returns True if a badge was granted, False otherwise."""
     member_roles = await get_member_roles(user_id)
     
-    # Start with a flag value of 0
     role_flags = 0
     
-    # Use bitwise OR to add the flag for each role the user has
     for mapping in ROLE_MAPPING:
         if mapping["role_id"] in member_roles:
             role_flags |= mapping["flag"]
             
-    # --- THIS IS THE NEW LOGIC ---
     if role_flags == 0:
         # User has none of the required roles.
         print(f"❌ User {user_id} has no mapped roles. Clearing any existing badge.")
         # Pushing empty metadata removes the linked role from their profile.
         await push_metadata(user_id, tokens, {})
+        return False # Return False because no role was granted
     else:
         # User has at least one role. Grant the badge.
         metadata = {
             "role_flags": role_flags
         }
         print(f"✅ Pushing metadata for user {user_id}: {metadata}")
-        await push_metadata(user_id, tokens, metadata)
+        # Return True if the push was successful
+        return await push_metadata(user_id, tokens, metadata)
